@@ -3,7 +3,7 @@
 
 ----
 
-⚠️ **最新代码请切换至 [dev](https://github.com/feint123/dtools/tree/dev) 分支**
+学习 --- 
 
 如果加载的插件中使用到了tauri的api，在编译项目前请先修改tauri的部分源码
 
