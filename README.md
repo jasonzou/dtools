@@ -3,7 +3,15 @@
 
 ----
 
-学习 --- 
+## 学习 
+
+- system tray
+- menu
+- window
+- plugin system？
+  
+--- 
+## 新的设计方式
 
 如果加载的插件中使用到了tauri的api，在编译项目前请先修改tauri的部分源码
 
