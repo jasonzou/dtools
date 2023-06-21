@@ -1,13 +1,8 @@
 import { open } from '@tauri-apps/api/dialog';
 import { emit } from '@tauri-apps/api/event';
-import { BaseDirectory, copyFile, readDir, createDir, removeDir, readTextFile } from '@tauri-apps/api/fs'
-import { compile } from 'vue';
-import {
-    insertPlugin, deletePlugin, selectPluginUnique, selectPluginByNameAndIdentifier,
-    create, insertCommand, deleteCommand,
-} from "./db";
+import { BaseDirectory, copyFile, readDir, createDir, removeDir, readTextFile } from '@tauri-apps/api/fs';
+import { insertPlugin, deletePlugin, selectPluginUnique, selectPluginByNameAndIdentifier, create, insertCommand, deleteCommand, } from "./db";
 import { dToolsEvent } from "./events";
-
 export function importPluginFromLocal() {
     open({
         directory: true,
@@ -15,12 +10,12 @@ export function importPluginFromLocal() {
     }).then(selected => {
         if (null != selected) {
             readDir(selected, { recursive: true }).then((files) => {
-                const fileMap = {}
+                const fileMap = new Map();
                 for (const file of files) {
-                    fileMap[file.name] = file
+                    fileMap.set(file.name, file);
                 }
                 // 获取配置文件
-                const configFile = fileMap['dtools.json'];
+                const configFile = fileMap.get('dtools.json');
                 if (configFile != null) {
                     // 读取配置文件内容
                     readTextFile(configFile.path).then((text) => {
@@ -30,13 +25,13 @@ export function importPluginFromLocal() {
                         const checkReuslt = checkPluginStruct(fileMap, config);
                         if (checkReuslt != null) {
                             // 发送失败通知
-                            sendError(checkReuslt)
+                            sendError(checkReuslt);
                             return;
                         }
                         // 判断当前插件唯一性
                         selectPluginUnique(config).then(result => {
                             if (result.length > 0) {
-                                sendError("插件已存在，请勿重复安装")
+                                sendError("插件已存在，请勿重复安装");
                                 return;
                             }
                             // 转移文件
@@ -45,99 +40,97 @@ export function importPluginFromLocal() {
                                 savePluginMetadata(config);
                             }).catch((err) => {
                                 console.error(err);
-                                sendError('无法初始化')
+                                sendError('无法初始化');
                             });
                         }).catch((e) => {
                             console.error(e);
-                        })
+                        });
                     }).catch((e) => {
-                        sendError('无法读取配置文件')
+                        sendError('无法读取配置文件');
                     });
-                } else {
-                    sendError('配置文件不存在')
+                }
+                else {
+                    sendError('配置文件不存在');
                 }
             }).catch((e) => {
-                sendError('无法读取插件目录')
+                sendError('无法读取插件目录');
             });
         }
     });
 }
 /**
  * 发送错误消息
- * @param {*} errorMsg 
+ * @param {*} errorMsg
  */
 function sendError(errorMsg) {
     emit(dToolsEvent.PLUGIN_INSTALL, { 'success': false, 'msg': `插件安装失败: ${errorMsg}` });
 }
-
 function sendSuccess(name) {
-    emit(dToolsEvent.PLUGIN_INSTALL, { 'success': true, 'msg': `插件 ${name} 安装成功` })
+    emit(dToolsEvent.PLUGIN_INSTALL, { 'success': true, 'msg': `插件 ${name} 安装成功` });
 }
-
-
 /**
  * 将json文本转换成javascript对象
- * @param {*} fileContent 
- * @returns 
+ * @param {*} fileContent
+ * @returns
  */
 function resolveConfig(fileContent) {
     try {
         return JSON.parse(fileContent);
-    } catch (e) {
+    }
+    catch (e) {
         console.log(e);
         return null;
     }
 }
-
 /**
  * todo 校验配置文件格式
- * @param {*} config 
+ * @param {*} config
  */
 function checkConfig(config) {
     if (config != null) {
-
     }
 }
-
 /**
  * 校验插件目录结构是否正确
- * @param {*} fileMap 
- * @param {*} config 
- * @returns 
+ * @param {*} fileMap
+ * @param {*} config
+ * @returns
  */
 function checkPluginStruct(fileMap, config) {
     const checkReuslt = checkConfig(config);
     if (checkReuslt == null) {
-        if (fileMap['icon.png'] == null) {
+        if (fileMap.get('icon.png') == null) {
             return "缺少文件[icon.png]";
         }
-        if (fileMap['src'] == null) {
+        if (fileMap.get('src') == null) {
             return "缺少目录[src]";
-        } else {
-            const srcSubFiles = fileMap['src'].children;
+        }
+        else {
+            const srcSubFiles = fileMap.get('src')?.children;
             if (null == srcSubFiles) {
                 return "src目录文件缺失";
-            } else {
-                const subFileMap = {}
+            }
+            else {
+                const subFileMap = new Map();
                 for (const file of srcSubFiles) {
-                    subFileMap[file.name] = file
+                    subFileMap.set(file.name, file);
                 }
-                const supportModes = config['support-modes'];
-                if (subFileMap[`window.js`] == null || subFileMap[`window.js`] == null) {
-                    return `缺少文件[${mode}.js/css]`;
+                // const supportModes = config['support-modes'];
+                if (subFileMap.get(`window.js`) == null || subFileMap.get(`window.css`) == null) {
+                    return `缺少文件[$window.js/css]`;
                 }
             }
         }
         // todo 校验command icon 文件
         return null;
-    } else {
+    }
+    else {
         return `配置文件格式不正确: ${checkReuslt}`;
     }
 }
-
 /**
  * 卸载插件
- * @param {*} pluginMetadata 
+ * @param {*} pluginMetadata
  */
 export function uninstallPlugin(pluginMetadata) {
     // 删除游戏目录，
@@ -146,20 +139,19 @@ export function uninstallPlugin(pluginMetadata) {
         deletePlugin(pluginMetadata.id).then(() => {
             // 删除插件的指令，如果有的话
             deleteCommand(pluginMetadata.id);
-            emit('plugin-uninstall', { 'success': true, 'msg': '插件卸载成功' })
+            emit('plugin-uninstall', { 'success': true, 'msg': '插件卸载成功' });
         }).catch(err => {
-            emit('plugin-uninstall', { 'success': false, 'msg': '插件卸载失败' })
-        })
+            emit('plugin-uninstall', { 'success': false, 'msg': '插件卸载失败' });
+        });
     }).catch(err => {
         console.error(err);
-        emit('plugin-uninstall', { 'success': false, 'msg': '插件卸载失败' })
+        emit('plugin-uninstall', { 'success': false, 'msg': '插件卸载失败' });
     });
 }
-
 /**
  * 迁移文件到置顶目录
- * @param {*} fileMap 
- * @param {*} config 
+ * @param {*} fileMap
+ * @param {*} config
  */
 async function transferFiles(fileMap, config) {
     const srcPath = `plugins/${config.identifier}/${encodeURI(config.name)}/${config.version}`;
@@ -167,13 +159,14 @@ async function transferFiles(fileMap, config) {
     await createDir(srcPath, { dir: BaseDirectory.AppData, recursive: true });
     await createDir(iconPath, { dir: BaseDirectory.AppData, recursive: true });
     // 复制src文件
-    for (const file of fileMap['src'].children) {
+    for (const file of fileMap.get('src')?.children) {
+        if (file.name === '.DS_Store')
+            continue;
         await copyFile(`${file.path}`, `${srcPath}/${file.name}`, { dir: BaseDirectory.AppData });
     }
     // todo 复制asset文件
-
     // 复制icon文件
-    const iconFile = fileMap['icon.png'];
+    const iconFile = fileMap.get('icon.png');
     await copyFile(`${iconFile.path}`, `${iconPath}/${iconFile.name}`, { dir: BaseDirectory.AppData });
 }
 // 窗口模式
@@ -211,7 +204,7 @@ function savePluginMetadata(config) {
         };
         // 设置一些初始属性createTime、updateTime等等
         create(metadata);
-        insertPlugin(metadata, () => {
+        insertPlugin(metadata).then(() => {
             if ((modeFlag | MODE_COMMAND) == MODE_COMMAND) {
                 // 插入command数据
                 saveCommandMetadata(config).then(() => {
@@ -219,11 +212,12 @@ function savePluginMetadata(config) {
                 }).catch(err => {
                     console.error(err);
                     sendError('无法初始化');
-                })
-            } else {
-                sendSuccess(metadata.name)
+                });
             }
-        }, (e) => {
+            else {
+                sendSuccess(metadata.name);
+            }
+        }).catch((e) => {
             // 回滚操作
             // 发送错误通知
             console.error(e);
@@ -232,12 +226,12 @@ function savePluginMetadata(config) {
     }).catch(e => {
         console.error(e);
         sendError('无法初始化');
-    })
+    });
 }
 /**
  * 保存命令元数据
- * @param {*} config 
- * @returns 
+ * @param {*} config
+ * @returns
  */
 function saveCommandMetadata(config) {
     return new Promise((resolve, reject) => {
@@ -256,12 +250,13 @@ function saveCommandMetadata(config) {
                         insertCommand(metadata);
                     }
                     resolve(1);
-                } catch (e) {
+                }
+                catch (e) {
                     reject(e);
                 }
             }
         }).catch(e => {
             reject(e);
-        })
+        });
     });
 }
